@@ -1,0 +1,6 @@
+@ManagementTrackingSystem_HostAddress = http://localhost:5249
+
+GET {{ManagementTrackingSystem_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
