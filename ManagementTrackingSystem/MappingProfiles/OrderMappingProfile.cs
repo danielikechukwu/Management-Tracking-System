@@ -34,6 +34,57 @@ namespace ManagementTrackingSystem.MappingProfiles
             //    and OrderItem -> OrderItemDTO (see below)
             // AutoMapper will automatically use those mappings, as long as
             // the source and destination property names and types align.
+
+            //-----------------------------------------------------------------
+            // 2. OrderItem -> OrderItemDTO
+            //-----------------------------------------------------------------
+            CreateMap<OrderItem, OrderItemDTO>()
+                // We only specify a custom mapping where source != destination.
+                // "Product.Name" -> "ProductName" is a custom transformation.
+                .ForMember(dest => dest.ProductName, opt => opt.MapFrom(src => src.Product.Name));
+
+            // We do NOT specify mappings for ProductPrice or TotalPrice 
+            // because the property names match exactly in both the source 
+            // and the destination (and there's no special logic needed):
+            //   Source: OrderItem.ProductPrice  -> Destination: OrderItemDTO.ProductPrice
+            //   Source: OrderItem.TotalPrice    -> Destination: OrderItemDTO.TotalPrice
+            // AutoMapper will do these by convention.
+
+            //-----------------------------------------------------------------
+            // 3. Address -> AddressDTO
+            //-----------------------------------------------------------------
+            // All property names match, and no special transform is needed,
+            // so we don't need ForMember. This single CreateMap is enough.
+            CreateMap<Address, AddressDTO>();
+
+            //-----------------------------------------------------------------
+            // 4. TrackingDetail -> TrackingDetailDTO
+            //-----------------------------------------------------------------
+            CreateMap<TrackingDetail, TrackingDetailDTO>()
+                // We apply a null substitute for TrackingNumber if null.
+                .ForMember(dest => dest.TrackingNumber, opt => opt.NullSubstitute("Tracking not available"));
+
+            //-----------------------------------------------------------------
+            // 5. OrderCreateDTO -> Order
+            //-----------------------------------------------------------------
+            CreateMap<OrderCreateDTO, Order>()
+                // Set the OrderDate to the current time when creating a new order
+                .ForMember(dest => dest.OrderDate, opt => opt.MapFrom(src => DateTime.Now))
+                // Initialize a default status (e.g., "Pending")
+                .ForMember(dest => dest.Status, opt => opt.MapFrom(src => "Pending"))
+                // Map "OrderCreateDTO.OrderItems" -> "Order.Items" (different property names)
+                .ForMember(dest => dest.OrderItems, opt => opt.MapFrom(src => src.Items));
+
+            // We do NOT specify .ForMember for "Amount", "OrderDiscount", or "TotalAmount"
+            // because they might be calculated logic in the controller/service layer
+            // rather than mapped directly from the DTO.
+
+            //-----------------------------------------------------------------
+            // 6. OrderItemCreateDTO -> OrderItem
+            //-----------------------------------------------------------------
+            // Because the property names match ("ProductId", "Quantity") and
+            // there's no special transformation, a default CreateMap is sufficient.
+            CreateMap<OrderItemCreateDTO, OrderItem>();
         }
     }
 }
