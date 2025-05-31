@@ -35,7 +35,7 @@ namespace ManagementTrackingSystem.Controllers
         // This action method retrieves a single order by its ID and maps it
         // directly to an OrderDTO. We use AsNoTracking() since no updates are needed,
         // and ProjectTo<OrderDTO> to fetch only the columns required by the DTO.
-        [HttpGet("GetOrderById/{    Id}")]
+        [HttpGet("GetOrderById/{Id}")]
         public async Task<ActionResult<OrderDTO>> GetOrderById([FromRoute] int Id)
         {
             try
@@ -73,7 +73,7 @@ namespace ManagementTrackingSystem.Controllers
             try
             {
                 // We filter by CustomerId, then project to OrderDTO and fetch the results
-                var ordersDTO = await _context.Orders
+                List<OrderDTO> ordersDTO = await _context.Orders
                     .AsNoTracking()
                     .Where(o => o.CustomerId == customerId)
                     .ProjectTo<OrderDTO>(_mapper.ConfigurationProvider)
@@ -262,6 +262,87 @@ namespace ManagementTrackingSystem.Controllers
             }
                 
         }
+
+        // ---------------------------
+        // POST: api/Orders/AddTrackingDetails
+        // ---------------------------
+        // This endpoint adds or updates the tracking details for a given order.
+        // We allow updates only if the order status is "Pending" or "Shipped."
+        [HttpPost("AddTrackingDetails")]
+        public async Task<ActionResult<TrackingDetailDTO>> AddTrackingDetails([FromBody] TrackingCreateDTO trackingCreateDTO)
+        {
+            // Validate the input DTO
+            if (trackingCreateDTO == null)
+                return BadRequest("Invalid tracking details");
+
+            try
+            {
+                // 1. Retrieve the order (tracked), including any existing TrackingDetail.
+                var order = await _context.Orders
+                    .Include(o => o.TrackingDetail)
+                    .FirstOrDefaultAsync(o => o.Id == trackingCreateDTO.OrderId);
+
+                // 2. If the order doesn't exist, return 404
+                if (order == null)
+                    return NotFound($"Order with ID: {trackingCreateDTO.OrderId} not found.");
+
+                // 3. Only allow updates if status is "Pending", "Processing", or "Shipped"
+                //    - "Pending"/"Processing" transitions to "Shipped" upon adding tracking
+                //    - If the order is already "Shipped", we allow further updates
+                //    - Otherwise, return a 400 error.
+                if (order.Status == "Pending" || order.Status == "Processing")
+                {
+                    order.Status = "Shipped";
+                }
+                else if(order.Status != "Shipped")
+                {
+                    return BadRequest($"Cannot add or update tracking for an order in status '{order.Status}'.");
+                }
+
+                // 4. If the order has no tracking detail, create one; otherwise, update it
+                if(order.TrackingDetail != null)
+                {
+                    var trackingDetail = new TrackingDetail
+                    {
+                        OrderId = order.Id,
+                        Carrier = trackingCreateDTO.Carrier,
+                        EstimatedDeliveryDate = trackingCreateDTO.EstimatedDeliveryDate,
+                        TrackingNumber = trackingCreateDTO.TrackingNumber,
+                    };
+
+                    _context.TrackingDetails.Add(trackingDetail);
+
+                }
+                else
+                {
+                    order.TrackingDetail.Carrier = trackingCreateDTO.Carrier;
+                    order.TrackingDetail.EstimatedDeliveryDate = trackingCreateDTO.EstimatedDeliveryDate;
+                    order.TrackingDetail.TrackingNumber = trackingCreateDTO.TrackingNumber;
+                }
+
+                // 5. Save changes to the database
+                await _context.SaveChangesAsync();
+
+                // 6. Map the newly created or updated TrackingDetail to a TrackingDetailDTO
+                //    Now that the database update is done, 'order.TrackingDetail' holds the latest data.
+                var updatedTrackingDTO = _mapper.Map<TrackingDetail>(order.TrackingDetail);
+
+                // 7. Return 200 OK with the updated tracking info
+                return Ok(updatedTrackingDTO);
+
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred while updating tracking details: {ex.Message}");
+            }
+        }
+
+        // ---------------------------
+        // GET: api/Orders/GetTrackingDetailByOrderId/{orderId}
+        // ---------------------------
+        // This method retrieves only the tracking details for a given order ID.
+        // We use AsNoTracking because it's a read-only scenario.
+        // We also only fetch the existing TrackingDetail if not null.
 
     }
 }
