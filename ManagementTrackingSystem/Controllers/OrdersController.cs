@@ -343,6 +343,34 @@ namespace ManagementTrackingSystem.Controllers
         // This method retrieves only the tracking details for a given order ID.
         // We use AsNoTracking because it's a read-only scenario.
         // We also only fetch the existing TrackingDetail if not null.
+        [HttpGet("GetTrackingDetailByOrderId/{orderId}")]
+        public async Task<ActionResult<TrackingDetailDTO>> GetTrackingDetailByOrderId([FromRoute] int orderId)
+        {
+            try
+            {
+                // Again, we only want the tracking details, so we filter to orders that
+                // have a matching orderId AND a non-null TrackingDetail. Then we project 
+                // that detail to TrackingDetailDTO.
+                var trackingDetailDTO = await _context.Orders
+                    .AsNoTracking()
+                    .Where(o => o.Id == orderId && o.TrackingDetail != null)
+                    .Select(o => o.TrackingDetail)
+                    .ProjectTo<TrackingDetailDTO>(_mapper.ConfigurationProvider)
+                    .FirstOrDefaultAsync();
+
+                // If not found, return 404
+                if (trackingDetailDTO == null)
+                    return NotFound($"No tracking details found for order with ID {orderId}");
+
+                // Otherwise, return the mapped DTO
+                return Ok(trackingDetailDTO);
+            }
+            catch (Exception ex)
+            {
+                // If something goes awry, respond with 500
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
 
     }
 }
