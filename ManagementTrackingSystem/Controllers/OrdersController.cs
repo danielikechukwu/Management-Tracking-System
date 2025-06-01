@@ -300,7 +300,7 @@ namespace ManagementTrackingSystem.Controllers
                 }
 
                 // 4. If the order has no tracking detail, create one; otherwise, update it
-                if(order.TrackingDetail != null)
+                if(order.TrackingDetail == null)
                 {
                     var trackingDetail = new TrackingDetail
                     {
@@ -325,7 +325,7 @@ namespace ManagementTrackingSystem.Controllers
 
                 // 6. Map the newly created or updated TrackingDetail to a TrackingDetailDTO
                 //    Now that the database update is done, 'order.TrackingDetail' holds the latest data.
-                var updatedTrackingDTO = _mapper.Map<TrackingDetail>(order.TrackingDetail);
+                var updatedTrackingDTO = _mapper.Map<TrackingDetailDTO>(order.TrackingDetail);
 
                 // 7. Return 200 OK with the updated tracking info
                 return Ok(updatedTrackingDTO);
