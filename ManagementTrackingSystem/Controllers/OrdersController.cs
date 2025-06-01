@@ -364,13 +364,16 @@ namespace ManagementTrackingSystem.Controllers
 
                 // Otherwise, return the mapped DTO
                 return Ok(trackingDetailDTO);
+
             }
             catch (Exception ex)
             {
                 // If something goes awry, respond with 500
                 return StatusCode(500, $"An error occurred: {ex.Message}");
             }
+
         }
 
     }
+
 }
